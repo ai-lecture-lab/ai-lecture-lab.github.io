@@ -4,116 +4,412 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Lecture Lab</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
+    /* 색상 토큰 */
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --border: #e3e4e8;
+      --text: #1f2328;
+      --muted: #6b7079;
+      --accent: #3b6ef5;
+      --good: #1f9d55;
+      --chip: #eef0f3;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14161a;
+        --panel: #1d2026;
+        --border: #2d3139;
+        --text: #e6e8eb;
+        --muted: #9aa0a8;
+        --accent: #6b93ff;
+        --good: #4cc38a;
+        --chip: #2a2e35;
+      }
+    }
+
     /* 기본 레이아웃 */
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #f7f7f8;
-      color: #222;
+      font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
     }
     main {
-      max-width: 960px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 48px 16px;
+      padding: 32px 16px 48px;
     }
-    header { text-align: center; margin-bottom: 40px; }
-    h1 { margin: 0 0 0.5rem; }
-    header p { color: #666; margin: 0; }
+    h1, h2, h3 { margin: 0; }
+    .muted { color: var(--muted); }
 
-    /* 프로젝트 카드 그리드 */
+    /* 공통 패널 */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .panel_title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .demo_badge {
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--muted);
+    }
+
+    /* 상단: 인사 + 시계 */
+    .top_row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+    .greeting h1 { font-size: 1.6rem; margin-bottom: 6px; }
+    .clock_panel { text-align: right; min-width: 240px; }
+    .clock_time {
+      font-size: 2.4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    .clock_date { margin-top: 4px; }
+
+    /* 수치 타일 */
+    .stat_grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .stat_label { font-size: 0.85rem; color: var(--muted); }
+    .stat_value {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin: 6px 0 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat_note { font-size: 0.8rem; color: var(--good); }
+
+    /* 그래프 영역 */
+    .chart_grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .chart_box { position: relative; height: 260px; }
+
+    /* 하단: 프로젝트 + 사이드 */
+    .bottom_grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+    .side_col { display: grid; gap: 16px; align-content: start; }
+
+    /* 프로젝트 카드 */
     .project_grid {
       list-style: none;
       padding: 0;
       margin: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
     }
     .project_card {
       display: block;
       height: 100%;
-      box-sizing: border-box;
-      padding: 20px;
-      background: #fff;
-      border: 1px solid #e3e3e6;
-      border-radius: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
       color: inherit;
       text-decoration: none;
       transition: border-color 0.15s, transform 0.15s;
     }
-    .project_card:hover { border-color: #888; transform: translateY(-2px); }
-    .project_num { font-size: 0.85rem; color: #999; }
-    .project_title { margin: 4px 0 12px; font-size: 1.15rem; }
+    .project_card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .project_num { font-size: 0.8rem; color: var(--muted); }
+    .project_title { margin: 4px 0 10px; font-size: 1rem; }
     .project_status {
       display: inline-block;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       padding: 2px 10px;
       border-radius: 999px;
-      background: #eee;
-      color: #777;
+      background: var(--chip);
+      color: var(--muted);
     }
+    .project_status.is_live { background: var(--good); color: #fff; }
+    /* 링크 미연결 카드는 클릭 비활성화 */
+    .project_card.is_pending { pointer-events: none; opacity: 0.6; }
 
-    /* 링크 미연결 상태: 클릭 비활성화 */
-    .project_card.is_pending {
-      pointer-events: none;
-      opacity: 0.7;
+    /* 진행률 바 */
+    .progress_track {
+      height: 8px;
+      background: var(--chip);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 8px 0 4px;
+    }
+    .progress_fill { height: 100%; background: var(--accent); width: 0; }
+
+    /* 오늘의 문구 */
+    .quote_text { font-size: 1rem; line-height: 1.6; margin: 0 0 8px; }
+
+    /* 메모 목록 */
+    .memo_list { margin: 0; padding-left: 18px; line-height: 1.8; }
+
+    footer { text-align: center; margin-top: 32px; font-size: 0.8rem; }
+
+    /* 반응형 */
+    @media (max-width: 860px) {
+      .stat_grid { grid-template-columns: repeat(2, 1fr); }
+      .chart_grid, .bottom_grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .top_row { grid-template-columns: 1fr; }
+      .clock_panel { text-align: left; }
+      .clock_time { font-size: 2rem; }
     }
   </style>
 </head>
 <body>
   <main>
-    <header>
-      <h1>AI Lecture Lab</h1>
-      <p>실습 자료 모음</p>
-    </header>
+    <!-- 상단: 인사말 + 시계 -->
+    <section class="top_row">
+      <div class="panel greeting">
+        <h1 id="greeting_text">안녕하세요 👋</h1>
+        <p class="muted" style="margin:0">AI Lecture Lab 실습 대시보드입니다. 진행 중인 프로젝트와 학습 현황을 한눈에 확인하세요.</p>
+      </div>
+      <div class="panel clock_panel">
+        <div class="clock_time" id="clock_time">--:--:--</div>
+        <div class="clock_date muted" id="clock_date">----</div>
+      </div>
+    </section>
 
-    <!-- 프로젝트 목록: 링크 연결 시 href 를 실제 주소로 바꾸고 is_pending 클래스와 aria-disabled 를 제거 -->
-    <ul class="project_grid">
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">01</span>
-          <h2 class="project_title">할일 목록 리스트</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">02</span>
-          <h2 class="project_title">클로드 활용 스네이크 게임</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">03</span>
-          <h2 class="project_title">개인 프로파일</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">04</span>
-          <h2 class="project_title">주식 일기</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">05</span>
-          <h2 class="project_title">4축 로봇암 시뮬레이터</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-      <li>
-        <a class="project_card is_pending" href="#" aria-disabled="true">
-          <span class="project_num">06</span>
-          <h2 class="project_title">이북 쇼핑몰</h2>
-          <span class="project_status">준비 중</span>
-        </a>
-      </li>
-    </ul>
+    <!-- 수치 타일 (값은 아래 dashboard_data 에서 채움) -->
+    <section class="stat_grid" id="stat_grid"></section>
+
+    <!-- 그래프 자리: 데모 데이터, 나중에 dashboard_data 의 값만 교체 -->
+    <section class="chart_grid">
+      <div class="panel">
+        <div class="panel_title">학습 시간 분포 <span class="demo_badge">데모</span></div>
+        <div class="chart_box"><canvas id="pie_chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel_title">최근 7일 학습 시간 (시간) <span class="demo_badge">데모</span></div>
+        <div class="chart_box"><canvas id="line_chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- 하단: 프로젝트 링크 + 사이드 정보 -->
+    <section class="bottom_grid">
+      <div class="panel">
+        <div class="panel_title">
+          실습 프로젝트
+          <span class="demo_badge" id="project_count">0 / 0 연결</span>
+        </div>
+        <div class="progress_track"><div class="progress_fill" id="project_progress"></div></div>
+        <p class="muted" style="font-size:0.8rem;margin:0 0 14px" id="project_progress_text"></p>
+        <ul class="project_grid" id="project_grid"></ul>
+      </div>
+
+      <div class="side_col">
+        <div class="panel">
+          <div class="panel_title">오늘의 문구</div>
+          <p class="quote_text" id="quote_text"></p>
+          <div class="muted" style="font-size:0.85rem" id="quote_author"></div>
+        </div>
+        <div class="panel">
+          <div class="panel_title">이번 주 목표 <span class="demo_badge">데모</span></div>
+          <ul class="memo_list" id="memo_list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="muted">© AI Lecture Lab · ai-lecture-lab.github.io</footer>
   </main>
+
+  <script>
+    // ===== 대시보드 데이터: 이 객체의 값만 바꾸면 화면이 갱신됨 =====
+    const dashboard_data = {
+      // 프로젝트 목록: url 이 null 이면 "준비 중" 으로 표시
+      projects: [
+        { title: "할일 목록 리스트", url: "https://ai-lecture-lab.github.io/to-do-list" },
+        { title: "클로드 활용 스네이크 게임", url: null },
+        { title: "개인 프로파일", url: null },
+        { title: "주식 일기", url: null },
+        { title: "4축 로봇암 시뮬레이터", url: null },
+        { title: "이북 쇼핑몰", url: null }
+      ],
+      // 수치 타일 (데모 값)
+      stats: [
+        { label: "이번 주 학습 시간", value: "12.5h", note: "▲ 지난주 대비 +2.0h" },
+        { label: "연속 학습일", value: "7일", note: "최고 기록 갱신 중" },
+        { label: "완료한 실습", value: "1개", note: "총 6개 중" },
+        { label: "작성한 커밋", value: "24", note: "▲ 이번 주 +8" }
+      ],
+      // 파이 차트 (데모 값)
+      pie_chart: {
+        labels: ["HTML/CSS", "JavaScript", "Claude 활용", "Git/배포"],
+        values: [30, 35, 25, 10]
+      },
+      // 꺾은선 그래프 (데모 값)
+      line_chart: {
+        labels: ["월", "화", "수", "목", "금", "토", "일"],
+        values: [1.5, 2.0, 1.0, 2.5, 1.8, 3.0, 0.7]
+      },
+      // 이번 주 목표 (데모 값)
+      memos: [
+        "할일 목록 리스트 배포 완료 ✅",
+        "스네이크 게임 기본 구조 만들기",
+        "개인 프로파일 디자인 구상",
+        "Git 브랜치 사용법 복습"
+      ],
+      // 오늘의 문구: 날짜에 따라 하나씩 순환
+      quotes: [
+        { text: "배움에는 왕도가 없다.", author: "유클리드" },
+        { text: "작게 시작해서 자주 배포하라.", author: "개발 격언" },
+        { text: "오늘 할 수 있는 일에 최선을 다하라.", author: "아이작 뉴턴" },
+        { text: "완벽함보다 완성이 낫다.", author: "개발 격언" },
+        { text: "천 리 길도 한 걸음부터.", author: "속담" }
+      ]
+    };
+
+    // ===== 시계: 1초마다 갱신 =====
+    const week_days = ["일", "월", "화", "수", "목", "금", "토"];
+    function pad_two(num) { return String(num).padStart(2, "0"); }
+
+    function update_clock() {
+      const now = new Date();
+      const hour = now.getHours();
+      document.getElementById("clock_time").textContent =
+        `${pad_two(hour)}:${pad_two(now.getMinutes())}:${pad_two(now.getSeconds())}`;
+      document.getElementById("clock_date").textContent =
+        `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${week_days[now.getDay()]})`;
+
+      // 시간대별 인사말
+      let greeting = "좋은 밤이에요 🌙";
+      if (hour >= 5 && hour < 12) greeting = "좋은 아침이에요 ☀️";
+      else if (hour >= 12 && hour < 18) greeting = "좋은 오후예요 🌤️";
+      else if (hour >= 18 && hour < 22) greeting = "좋은 저녁이에요 🌆";
+      document.getElementById("greeting_text").textContent = greeting;
+    }
+    update_clock();
+    setInterval(update_clock, 1000);
+
+    // ===== 수치 타일 렌더링 =====
+    document.getElementById("stat_grid").innerHTML = dashboard_data.stats.map(stat_item => `
+      <div class="panel">
+        <div class="stat_label">${stat_item.label}</div>
+        <div class="stat_value">${stat_item.value}</div>
+        <div class="stat_note">${stat_item.note}</div>
+      </div>`).join("");
+
+    // ===== 프로젝트 카드 렌더링 =====
+    const project_list = dashboard_data.projects;
+    const live_count = project_list.filter(project_item => project_item.url).length;
+
+    document.getElementById("project_grid").innerHTML = project_list.map((project_item, index) => {
+      const is_live = Boolean(project_item.url);
+      const card_num = pad_two(index + 1);
+      return `
+        <li>
+          <a class="project_card ${is_live ? "" : "is_pending"}"
+             href="${is_live ? project_item.url : "#"}"
+             ${is_live ? 'target="_blank" rel="noopener"' : 'aria-disabled="true"'}>
+            <span class="project_num">${card_num}</span>
+            <h3 class="project_title">${project_item.title}</h3>
+            <span class="project_status ${is_live ? "is_live" : ""}">${is_live ? "바로가기 →" : "준비 중"}</span>
+          </a>
+        </li>`;
+    }).join("");
+
+    // 프로젝트 연결 진행률
+    const progress_percent = Math.round((live_count / project_list.length) * 100);
+    document.getElementById("project_count").textContent = `${live_count} / ${project_list.length} 연결`;
+    document.getElementById("project_progress").style.width = `${progress_percent}%`;
+    document.getElementById("project_progress_text").textContent = `전체 진행률 ${progress_percent}%`;
+
+    // ===== 오늘의 문구 (날짜 기준 순환) =====
+    const day_index = Math.floor(Date.now() / 86400000) % dashboard_data.quotes.length;
+    const today_quote = dashboard_data.quotes[day_index];
+    document.getElementById("quote_text").textContent = `“${today_quote.text}”`;
+    document.getElementById("quote_author").textContent = `— ${today_quote.author}`;
+
+    // ===== 이번 주 목표 =====
+    document.getElementById("memo_list").innerHTML =
+      dashboard_data.memos.map(memo_item => `<li>${memo_item}</li>`).join("");
+
+    // ===== 그래프 (Chart.js) =====
+    const root_style = getComputedStyle(document.documentElement);
+    const text_color = root_style.getPropertyValue("--muted").trim();
+    const grid_color = root_style.getPropertyValue("--border").trim();
+    const accent_color = root_style.getPropertyValue("--accent").trim();
+    const chart_palette = ["#3b6ef5", "#f5a623", "#1f9d55", "#e5484d"];
+
+    if (window.Chart) {
+      Chart.defaults.color = text_color;
+      Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+      // 파이 차트
+      new Chart(document.getElementById("pie_chart"), {
+        type: "pie",
+        data: {
+          labels: dashboard_data.pie_chart.labels,
+          datasets: [{
+            data: dashboard_data.pie_chart.values,
+            backgroundColor: chart_palette,
+            borderColor: root_style.getPropertyValue("--panel").trim(),
+            borderWidth: 2
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12 } },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}%` } }
+          }
+        }
+      });
+
+      // 꺾은선 그래프
+      new Chart(document.getElementById("line_chart"), {
+        type: "line",
+        data: {
+          labels: dashboard_data.line_chart.labels,
+          datasets: [{
+            label: "학습 시간",
+            data: dashboard_data.line_chart.values,
+            borderColor: accent_color,
+            backgroundColor: accent_color + "22",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, grid: { color: grid_color } }
+          }
+        }
+      });
+    }
+  </script>
 </body>
 </html>
